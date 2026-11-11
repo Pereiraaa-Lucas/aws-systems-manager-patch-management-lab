@@ -1,64 +1,83 @@
-AWS Systems Manager: Enterprise Patch Management & Systems Hardening Lab
+# 🛡️ AWS Systems Manager: Patch Management & Automated Compliance Lab
 
-🚀 Visão Geral do Projeto
+Este repositório documenta a implementação prática de uma estratégia centralizada de **Gerenciamento de Patches (Patch Management)** e **Governança de Conformidade** utilizando o **AWS Systems Manager (SSM)** em um ambiente híbrido simulado contendo instâncias Linux (Amazon Linux 2) e Windows Server (Windows Server 2019).
 
-Este repositório documenta a execução prática e o entendimento técnico avançado obtido no laboratório de Fortalecimento de Sistemas com o Gerenciador de Patches (Patch Manager) através do AWS Systems Manager (SSM).
+O projeto demonstra a capacidade de automatizar o ciclo de vida de atualizações de segurança, aplicar listas de referência (*Patch Baselines*) personalizadas e assegurar auditoria contínua de conformidade em larga escala.
 
-Em ambientes de computação em nuvem em larga escala — que englobam centenas ou milhares de instâncias híbridas —, garantir a conformidade de segurança e a aplicação automatizada de patches sem intervenção manual direta é um pilar crítico do modelo de responsabilidade compartilhada da AWS e das melhores práticas do AWS Well-Architected Framework (Specifically, the Security Pillar).
+---
 
-🛠️ Arquitetura e Escopo do Laboratório
+## 🏗️ Arquitetura e Cenário do Laboratório
 
-O laboratório simulou um ambiente de produção heterogêneo composto por 6 instâncias Amazon EC2:
+O ambiente provisionado simula um cenário corporativo com múltiplos sistemas operacionais gerenciados de forma centralizada através do agente do SSM (`ssm-agent`), utilizando perfis de IAM com permissões de privilégio mínimo e tagueamento baseado em metadados (`Patch Group`).
 
-3 instâncias Linux (destinadas ao ambiente LinuxProd).
+* **Frota Gerenciada:** 6 instâncias Amazon EC2 (3 com Linux e 3 com Windows Server 2019).
+* **Camada de Orquestração:** AWS Systems Manager (Fleet Manager, Patch Manager, State Manager e Run Command).
+* **Segurança e Isolamento:** Controle de acesso baseado em tags e aplicação de políticas de segurança customizadas.
 
-3 instâncias Windows Server 2019 (destinadas ao ambiente WindowsProd).
+---
 
-O objetivo central foi implementar um ciclo de vida de gerenciamento de patches automatizado, separando estratégias padrão para Linux e criando políticas personalizadas e restritivas para cargas de trabalho Windows.
+## ⚙️ Principais Componentes Implementados
 
-📋 Passo a Passo Executado
+### 1. Automação de Patches para Linux (Listas Padrão)
+* **Baseline Utilizada:** `AWS-AmazonLinux2DefaultPatchBaseline` pré-configurada pela AWS.
+* **Segmentação:** Aplicação direcionada por meio de tags de grupo (`Patch Group = LinuxProd`).
+* **Ações Executadas:** Verificação (`Scan`) e instalação automatizada (`Install`) de pacotes críticos e de segurança sem intervenção manual.
 
-1. Governança e Aplicação de Patches em Linux (Padrão)
+### 2. Governança Avançada para Windows (Baselines Personalizadas)
+Desenvolvimento de uma **Lista de Referência de Patches Customizada** (`WindowsServerSecurityUpdates`) para atender a requisitos estritos de conformidade do Windows Server 2019:
+* **Regra 1 (Atualizações Críticas):** Aprovação automática em 3 dias para pacotes de segurança classificados com severidade `Crítica`.
+* **Regra 2 (Atualizações Importantes):** Aprovação automática em 3 dias para pacotes classificados com severidade `Importante`.
+* **Relatórios de Conformidade Integrados:** Classificação de criticidade configurada para auditorias automatizadas.
 
-Utilização de Baselines Padrão: Emprego da lista de referência pré-configurada pela AWS (AWS-AmazonLinux2DefaultPatchBaseline).
+### 3. Tagueamento Estratégico e Grupos de Patches (`Patch Groups`)
+* Associação dinâmica de instâncias do EC2 ao grupo lógico `WindowsProd` por meio de metadados de tags (`Patch Group = WindowsProd`).
+* Desacoplamento entre a infraestrutura de servidores e as regras de patching, permitindo escalabilidade horizontal automática.
 
-Automação via Tags: Direcionamento da operação de digitalização e instalação (Scan and Install) utilizando o seletor de tags baseada em chave-valor (Patch Group = LinuxProd).
+### 4. Verificação de Conformidade e Auditoria (`Compliance Reporting`)
+* Utilização do painel do **Patch Manager** e do **State Manager** para monitoramento em tempo real do estado de conformidade (*Compliant vs. Non-Compliant*).
+* Inspeção detalhada de nós individuais para validação de histórico de instalação e relatórios de auditoria de pacotes ausentes.
 
-2. Criação de Linha de Base Personalizada para Windows (Custom Baseline)
+---
 
-Criação da Custom Baseline: Desenvolvimento da lista de referência WindowsServerSecurityUpdates voltada para o WindowsServer2019.
+## 🚀 Passo a Passo da Implementação
 
-Regras de Aprovação Granular:
+### Passo 1: Aplicação de Patches em Linux (Padrão)
+1. Acessar o **AWS Systems Manager > Gerenciador de correções** (Patch Manager).
+2. Selecionar **Aplicar patch agora** (*Patch Now*).
+3. Configurar os parâmetros:
+   * **Operação:** `Verificar e instalar`
+   * **Destino:** Instâncias especificadas por tags (`Patch Group` = `LinuxProd`)
+   * **Opção de reinicialização:** `Reinicializar se necessário`
 
-Regra 1 (Crítica): Aprovação automática em 3 dias para atualizações de segurança (SecurityUpdates) com severidade Crítica, gerando relatórios de conformidade estritos.
+### Passo 2: Criação da Baseline Personalizada para Windows
+1. No Patch Manager, navegar até a aba **Listas de referência de patches** e clicar em **Criar linha de base de patch**.
+2. Definir o nome `WindowsServerSecurityUpdates` para o sistema operacional **Windows**.
+3. Configurar as regras de aprovação para `WindowsServer2019` com classificação `SecurityUpdates` e severidades `Crítica` e `Importante` (janela de aprovação de 3 dias).
+4. Associar a baseline criada ao grupo de patches `WindowsProd`.
 
-Regra 2 (Importante): Aprovação automática em 3 dias para atualizações de segurança com severidade Importante, com relatórios de conformidade em nível Alto.
+### Passo 3: Tagueamento de Instâncias no Amazon EC2
+1. Acessar o console do **Amazon EC2 > Instâncias**.
+2. Selecionar as instâncias do Windows (`Windows-1`, `Windows-2`, `Windows-3`).
+3. Gerenciar Tags e adicionar:
+   * **Chave:** `Patch Group`
+   * **Valor:** `WindowsProd`
 
-3. Tagueamento de Recursos e Vinculação de Grupos de Patches
+### Passo 4: Execução e Validação de Conformidade
+1. Disparar a operação de patching no Systems Manager direcionando para o grupo `WindowsProd`.
+2. Validar o **Resumo da Conformidade** no painel central para garantir o status `Compliant: 6` em toda a frota.
 
-Associação de Grupo: Vínculo da baseline personalizada WindowsServerSecurityUpdates ao grupo de patches WindowsProd.
+---
 
-Resource Tagging no EC2: Atribuição da tag corporativa Patch Group = WindowsProd em todas as instâncias do Windows (Windows-1, Windows-2, Windows-3) por meio do console do EC2 e Fleet Manager.
+## 🛠️ Tecnologias e Ferramentas Utilizadas
 
-Execução Dirigida: Disparo do comando PatchBaselineOperations via Run Command para garantir conformidade imediata.
+* **AWS EC2:** Infraestrutura de computação em nuvem (Linux & Windows).
+* **AWS Systems Manager (SSM):** Gerenciamento operacional e automação de frotas.
+* **IAM (Identity and Access Management):** Gestão segura de permissões e papéis de execução.
+* **Cloud Infrastructure & Security Operations:** Práticas de hardening e gerenciamento de vulnerabilidades.
 
-4. Auditoria e Validação de Conformidade
+---
 
-Painel de Conformidade (Patch Manager Dashboard): Monitoramento em tempo real do estado de conformidade das instâncias, atingindo com sucesso a métrica de Compliant: 6 (100% de conformidade corporativa).
+## 👨‍💻 Autor
 
-Inspeção de Nós: Auditoria detalhada de histórico de instalação de pacotes e relatórios de conformidade por nó individual.
-
-🧠 Entendimento de Alto Nível & Insights de Segurança
-
-Gestão Centralizada em Escala (SSM Fleet Manager): O uso de agentes SSM (Amazon SSM Agent) elimina a necessidade de abertura de portas de gerência direta (como SSH/RDP expostas à internet), canalizando comandos administrativos de forma segura por meio de endpoints criptografados da API da AWS.
-
-Separação de Ambientes via Patch Groups: A tag Patch Group atua como um seletor lógico fundamental. Ela desacopla a infraestrutura física da política de remediação, permitindo que equipes apliquem diferentes janelas de manutenção e criticidades a ambientes de desenvolvimento, homologação e produção de forma isolada.
-
-Redução de Superfície de Ataque (Vulnerability Management): A automação rigorosa de patches de segurança previne explorações conhecidas (CVEs), mitigando riscos inerentes à lentidão ou esquecimento de atualizações manuais em parques de servidores corporativos.
-
-📂 Estrutura do Repositório
-
-aws-systems-manager-patch-management-lab/
-├── README.md               # Documentação técnica e entendimento do projeto
-├── docs/                   # Evidências e guias complementares em PDF
-└── scripts/                # Referências de automação e comandos SSM
+**Lucas dos Santos Pereira**  
+*Estudante de Análise e Desenvolvimento de Sistemas | Focado em Engenharia de Nuvem, Infraestrutura e Automação.*
